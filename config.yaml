@@ -1,0 +1,7 @@
+serving_port: 8872
+#kafka_broker: datalake-kafka-kafka-brokers.datalake-kafka-brokers.svc.cluster.local:9092
+kafka_broker: 127.0.0.1:9092
+kafka_topic: public.openatms.systemtrack
+hashtags:
+  - elonmask
+  - bitcoin
