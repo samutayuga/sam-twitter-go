@@ -14,6 +14,22 @@ import (
 )
 import "github.com/dghubble/oauth1"
 
+type Daterange struct {
+	TimestampStart string `json:"timestamp_start"`
+}
+type Consumer struct {
+	ReplayMode bool   `yaml:"replay-mode"`
+	ReplayType string `yaml:"replay-type"`
+	ReplayFrom string `yaml:"replay-from"`
+}
+type Config struct {
+	ServingPort int      `yaml:"serving_port"`
+	KafkaBroker string   `yaml:"kafka_broker"`
+	KafkaTopic  string   `yaml:"kafka_topic"`
+	Hashtags    []string `yaml:"hashtags"`
+	Consumer    Consumer `yaml:"consumer"`
+}
+
 var (
 	httpClient *http.Client
 	client     *twitter.Client
@@ -58,6 +74,7 @@ func DoStream() {
 			text := tweet.Text
 			log.Printf("pumping %s \n", text)
 			kafkist.Produce(TopicName, text)
+			go kafkist.HandleReport()
 		}
 		go demux.HandleChan(stream.Messages)
 		ch := make(chan os.Signal)

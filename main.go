@@ -14,15 +14,8 @@ import (
 )
 
 var (
-	cfg = Config{}
+	cfg = tweetist.Config{}
 )
-
-type Config struct {
-	ServingPort int      `yaml:"serving_port"`
-	KafkaBroker string   `yaml:"kafka_broker"`
-	KafkaTopic  string   `yaml:"kafka_topic"`
-	Hashtags    []string `yaml:"hashtags"`
-}
 
 func init() {
 	configLocation := os.Getenv("CONFIG_FILE")
