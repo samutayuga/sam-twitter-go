@@ -68,7 +68,7 @@ func handleStart(writer http.ResponseWriter, request *http.Request) {
 	if err := decoder.Decode(&p); err != nil {
 		log.Fatalf("error while encoding %v %v\n", request.Body, err)
 	} else {
-		resp := make(chan int)
+		resp := make(chan bool)
 		go handleReplay(resp, p)
 		<-resp
 		writer.WriteHeader(http.StatusOK)
@@ -76,12 +76,22 @@ func handleStart(writer http.ResponseWriter, request *http.Request) {
 
 }
 func handlePause(writer http.ResponseWriter, request *http.Request) {
-
+	writer.Header().Set("Content-Type", "application/json;charset=UFT-8")
+	p := tweetist.Daterange{}
+	decoder := json.NewDecoder(request.Body)
+	if err := decoder.Decode(&p); err != nil {
+		log.Fatalf("error while encoding %v %v\n", request.Body, err)
+	} else {
+		resp := make(chan bool)
+		go handleReplay(resp, p)
+		<-resp
+		writer.WriteHeader(http.StatusOK)
+	}
 }
 func handleResume(writer http.ResponseWriter, request *http.Request) {
 
 }
-func handleReplay(resp chan int, requestPayload tweetist.Daterange) {
+func handleReplay(resp chan bool, requestPayload tweetist.Daterange) {
 	if c, err := kafka.NewConsumer(&kafka.ConfigMap{"metadata.broker.list": cfg.KafkaBroker,
 		"security.protocol":               "PLAINTEXT",
 		"group.id":                        "sam",
@@ -96,6 +106,8 @@ func handleReplay(resp chan int, requestPayload tweetist.Daterange) {
 		run := true
 		for run == true {
 			select {
+			case isRunning := <-resp:
+				log.Printf("Receive signal to %v\n", isRunning)
 			case sig := <-sigchan:
 				log.Printf("Caught signal %v: terminating\n", sig)
 				run = false
@@ -112,7 +124,7 @@ func handleReplay(resp chan int, requestPayload tweetist.Daterange) {
 					if cfg.Consumer.ReplayMode {
 						switch cfg.Consumer.ReplayType {
 						case "timestamp":
-							resp <- 200
+							resp <- true
 							log.Printf("reset the offset to timestamp %v\n", requestPayload.TimestampStart)
 							if t, err := time.Parse(time.RFC3339Nano, requestPayload.TimestampStart); err != nil {
 								log.Fatalf("failed to parse replay timestamp %s due to error %v", requestPayload.TimestampStart, err)
