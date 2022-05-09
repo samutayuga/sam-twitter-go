@@ -16,6 +16,7 @@ import "github.com/dghubble/oauth1"
 
 type Daterange struct {
 	TimestampStart string `json:"timestamp_start"`
+	TimestampEnd   string `json:"timestamp_end"`
 }
 type Consumer struct {
 	ReplayMode bool   `yaml:"replay-mode"`
