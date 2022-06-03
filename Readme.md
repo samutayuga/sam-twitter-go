@@ -77,6 +77,30 @@ volumes:
   kafka_data:
     driver: local
 ```
+# Useful Command
 
+`Create Topic`
+
+```shell
+./kafka-topics.sh --bootstrap-server=127.0.0.1:9093 --create --topic=DIFF-FIFO-ACC_062_OPER --partitions=1 --config retention.ms=-1
+```
+
+`Alter Topic`
+
+```shell
+./kafka-configs.sh --bootstrap-server 127.0.0.1:9093 --alter --topic CDC-CDC_OPER-FPL_OPER --add-config retention.ms=-1
+```
+
+`Check if a topic have a message`
+
+```shell
+./kafka-get-offsets.sh --bootstrap-server 127.0.0.1:9093 --topic CDC-CDC_OPER-FPL_OPER
+```
+
+`Consume the message`
+
+```shell
+./kafka-console-consumer.sh --bootstrap-server 127.0.0.1:9093 --from-beginning --topic RAW-FIXM42-OPER.v3 --property print.timestamp=true --property print.value=false --property print.offset=true
+```
 
 
