@@ -5,20 +5,42 @@ import (
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/gorilla/mux"
-	"github.com/samutayuga/sam-twitter-go/tweetist"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
-	"syscall"
 	"time"
 )
 
+type Consumer struct {
+	ReplayMode bool   `yaml:"replay-mode"`
+	ReplayType string `yaml:"replay-type"`
+	ReplayFrom string `yaml:"replay-from"`
+}
+type Config struct {
+	ServingPort int      `yaml:"serving_port"`
+	KafkaBroker string   `yaml:"kafka_broker"`
+	KafkaTopic  string   `yaml:"kafka_topic"`
+	Hashtags    []string `yaml:"hashtags"`
+	Consumer    Consumer `yaml:"consumer"`
+}
+
+const (
+	START   = "start"
+	STARTED = "started"
+	STOP    = "stop"
+	STOPPED = "stopped"
+	RESUME  = "resume"
+	PAUSE   = "pause"
+	PAUSED  = "paused"
+)
+
 var (
-	cfg = tweetist.Config{}
+	cfg          = Config{}
+	stop         = false
+	currentState = STOPPED
 )
 
 //BrowserPayload is a payload for the rest api
@@ -29,9 +51,8 @@ type BrowserPayload struct {
 	TimestampEnd   string `json:"timestamp_end"`
 }
 
-var stop = false
-
 func init() {
+	currentState = STOPPED
 	configLocation := os.Getenv("CONFIG_FILE")
 	if yFile, err := ioutil.ReadFile(configLocation); err == nil {
 		if errUnmarshall := yaml.Unmarshal(yFile, &cfg); errUnmarshall != nil {
@@ -41,139 +62,107 @@ func init() {
 		log.Fatalf("error while reading %s %v", configLocation, err)
 	}
 }
-func getPartitionNumbers(pars []kafka.TopicPartition) string {
-	var pNums string
-	for i, par := range pars {
-		if i == len(pars)-1 {
-			pNums = pNums + strconv.Itoa(int(par.Partition))
-		} else {
-			pNums = pNums + strconv.Itoa(int(par.Partition)) + ", "
+func isAllowed(action string) bool {
+	switch currentState {
+	case STARTED:
+		if action == STOP || action == PAUSE {
+			return true
 		}
-	}
-
-	return pNums
-}
-func partitionOffsetToTimestamps(c *kafka.Consumer, partitions []kafka.TopicPartition, timestamp int64) ([]kafka.TopicPartition, error) {
-	var prs []kafka.TopicPartition
-	for _, par := range partitions {
-		offset := kafka.Offset(timestamp)
-		tp := kafka.TopicPartition{Topic: par.Topic, Partition: par.Partition, Offset: offset}
-		log.Printf("The starting offset is %v\n", tp.Offset)
-
-		prs = append(prs, tp)
-	}
-	if updtPars, err := c.OffsetsForTimes(prs, 5000); err != nil {
-		log.Printf("Failed to reset offsets to supplied timestamp due to error: %v\n", err)
-		return updtPars, err
-	} else {
-		return updtPars, nil
-
-	}
-
-}
-func handleStart(writer http.ResponseWriter, request *http.Request) {
-	writer.Header().Set("Content-Type", "application/json;charset=UFT-8")
-	p := tweetist.Daterange{}
-	decoder := json.NewDecoder(request.Body)
-	if err := decoder.Decode(&p); err != nil {
-		log.Fatalf("error while encoding %v %v\n", request.Body, err)
-	} else {
-		resp := make(chan bool)
-		go handleReplay(resp, p)
-		<-resp
-		writer.WriteHeader(http.StatusOK)
-	}
-
-}
-func handlePause(writer http.ResponseWriter, request *http.Request) {
-	writer.Header().Set("Content-Type", "application/json;charset=UFT-8")
-	p := tweetist.Daterange{}
-	decoder := json.NewDecoder(request.Body)
-	if err := decoder.Decode(&p); err != nil {
-		log.Fatalf("error while encoding %v %v\n", request.Body, err)
-	} else {
-		resp := make(chan bool)
-		go handleReplay(resp, p)
-		<-resp
-		writer.WriteHeader(http.StatusOK)
-	}
-}
-func handleBrowse(writer http.ResponseWriter, request *http.Request) {
-	writer.Header().Set("Content-Type", "application/json;charset=UFT-8")
-	p := BrowserPayload{}
-	decoder := json.NewDecoder(request.Body)
-	if err := decoder.Decode(&p); err != nil {
-		log.Fatalf("error while encoding %v %v\n", request.Body, err)
-	} else {
-
-		if c, err := kafka.NewConsumer(&kafka.ConfigMap{"metadata.broker.list": p.Broker,
-			"security.protocol":               "PLAINTEXT",
-			"group.id":                        "sam",
-			"auto.offset.reset":               "earliest",
-			"go.application.rebalance.enable": true,
-			"go.events.channel.enable":        true}); err != nil {
-			panic(err)
-		} else {
-			c.Subscribe(p.TopicName, nil)
-			consumeTopic(c, p)
+		return false
+	case PAUSED:
+		if action == RESUME || action == STOP {
+			return true
 		}
-		writer.WriteHeader(http.StatusOK)
+		return false
+	case STOPPED:
+		if action == START {
+			return true
+		}
+	default:
+		return false
 	}
+	return false
 
 }
-func consumeTopic(c *kafka.Consumer, payload BrowserPayload) {
-	var run = true
-	for run == true {
-		select {
 
-		case ev := <-c.Events():
-			switch e := ev.(type) {
-			case kafka.AssignedPartitions:
-				partAssign := e.Partitions
-				if len(partAssign) == 0 {
-					log.Println("No partitions assigned")
-					continue
-				}
+//handleLifeCycle implement the change on the status request
+//the status is part of the request path parameter
+//PATH /topic/start
+func handleLifeCycle(writer http.ResponseWriter, request *http.Request) {
+	//stop = true
+	//extract the path parameter from request
+	reqUri := mux.Vars(request)
 
-				log.Printf("Assigned/Re-assigned Partitions: %s\n", getPartitionNumbers(partAssign))
-
-				log.Printf("reset the offset to timestamp %v\n", payload.TimestampBegin)
-				if t, err := time.Parse(time.RFC3339Nano, payload.TimestampBegin); err != nil {
-					log.Fatalf("failed to parse replay timestamp %s due to error %v", payload.TimestampBegin, err)
-				} else {
-					if partToAssign, errAssign := partitionOffsetToTimestamps(c, e.Partitions, t.UnixNano()/int64(time.Millisecond)); errAssign != nil {
-						log.Fatalf("error trying to reset offsets to timestamp %v", errAssign)
-					} else {
-						c.Assign(partToAssign)
-					}
-				}
-			case kafka.RevokedPartitions:
-				c.Unassign()
-			case *kafka.Message:
-				fmt.Printf("%% Message on %v, offset %v, time stamp %v\n", *e.TopicPartition.Topic, e.TopicPartition.Offset, e.Timestamp)
-			case kafka.PartitionEOF:
-				fmt.Printf("%% Reached %v\n", e)
-			case kafka.Error:
-				fmt.Fprintf(os.Stderr, "%% Error: %v\n", e)
+	if action, ok := reqUri["action"]; ok {
+		//if action == START {
+		//if it needs to start, check the current state
+		if isAllowed(action) {
+			handle(writer, request, action)
+		} else {
+			if _, errW := writer.Write([]byte(fmt.Sprintf("It is not allowed to %s on a %s state", action, currentState))); errW == nil {
+				writer.WriteHeader(http.StatusBadRequest)
+			} else {
+				writer.WriteHeader(http.StatusInternalServerError)
 			}
 
+			//	}
+
 		}
-
-	}
-}
-func handleResume(writer http.ResponseWriter, request *http.Request) {
-
-}
-func handleStop(writer http.ResponseWriter, request *http.Request) {
-	stop = true
-
-	if _, err := writer.Write([]byte("successfully stop")); err != nil {
-		writer.WriteHeader(http.StatusInternalServerError)
 	} else {
-		writer.WriteHeader(http.StatusOK)
+		if _, errW := writer.Write([]byte("Please provide action start, stop,resume,pause")); errW == nil {
+			writer.WriteHeader(http.StatusBadRequest)
+		} else {
+			writer.WriteHeader(http.StatusInternalServerError)
+		}
 	}
 }
-func handleReading(writer http.ResponseWriter, request *http.Request) {
+func getNextState(writer http.ResponseWriter, request *http.Request, action string) {
+	switch currentState {
+	case STARTED:
+		if action == STOP {
+			currentState = STOPPED
+
+		}
+		if action == PAUSE {
+			currentState = PAUSED
+
+		}
+		stop = true
+	case PAUSED:
+		if action == RESUME {
+			currentState = STARTED
+			stop = false
+		}
+		if action == STOP {
+			currentState = STOPPED
+			stop = true
+		}
+	case STOPPED:
+		if action == START {
+			currentState = STARTED
+			stop = false
+		}
+	}
+	if _, errWrite := writer.Write([]byte(fmt.Sprintf("Successfully %s from %s", action, currentState))); errWrite == nil {
+		writer.WriteHeader(http.StatusOK)
+	} else {
+		writer.WriteHeader(http.StatusInternalServerError)
+	}
+}
+func handle(writer http.ResponseWriter, request *http.Request, action string) {
+	switch action {
+	case START:
+		doStart(writer, request)
+
+		break
+
+	default:
+		//just update the state accordingly
+		getNextState(writer, request, action)
+
+	}
+}
+func doStart(writer http.ResponseWriter, request *http.Request) {
 	p := BrowserPayload{}
 	decoder := json.NewDecoder(request.Body)
 	if err := decoder.Decode(&p); err != nil {
@@ -212,6 +201,7 @@ func consume(consumer *kafka.Consumer) {
 	var offset string
 	var messageTimeStamp int64
 	log.Printf("start reading\n")
+	stop = false
 	for {
 		//log.Printf("current stop flag %v\n", stop)
 		if !stop {
@@ -229,81 +219,13 @@ func consume(consumer *kafka.Consumer) {
 	}
 
 }
-func handleReplay(resp chan bool, requestPayload tweetist.Daterange) {
-	if c, err := kafka.NewConsumer(&kafka.ConfigMap{"metadata.broker.list": cfg.KafkaBroker,
-		"security.protocol":               "PLAINTEXT",
-		"group.id":                        "sam",
-		"auto.offset.reset":               "earliest",
-		"go.application.rebalance.enable": true,
-		"go.events.channel.enable":        true}); err != nil {
-		panic(err)
-	} else {
-		sigchan := make(chan os.Signal, 1)
-		signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
-		c.Subscribe(cfg.KafkaTopic, nil)
-		run := true
-		for run == true {
-			select {
-			case isRunning := <-resp:
-				log.Printf("Receive signal to %v\n", isRunning)
-			case sig := <-sigchan:
-				log.Printf("Caught signal %v: terminating\n", sig)
-				run = false
-			case ev := <-c.Events():
-				switch e := ev.(type) {
-				case kafka.AssignedPartitions:
-					partAssign := e.Partitions
-					if len(partAssign) == 0 {
-						log.Println("No partitions assigned")
-						continue
-					}
-
-					log.Printf("Assigned/Re-assigned Partitions: %s\n", getPartitionNumbers(partAssign))
-					if cfg.Consumer.ReplayMode {
-						switch cfg.Consumer.ReplayType {
-						case "timestamp":
-							resp <- true
-							log.Printf("reset the offset to timestamp %v\n", requestPayload.TimestampStart)
-							if t, err := time.Parse(time.RFC3339Nano, requestPayload.TimestampStart); err != nil {
-								log.Fatalf("failed to parse replay timestamp %s due to error %v", requestPayload.TimestampStart, err)
-							} else {
-								if partToAssign, errAssign := partitionOffsetToTimestamps(c, e.Partitions, t.UnixNano()/int64(time.Millisecond)); errAssign != nil {
-									log.Fatalf("error trying to reset offsets to timestamp %v", errAssign)
-								} else {
-									c.Assign(partToAssign)
-								}
-							}
-
-						case "frombeginning":
-
-						}
-					}
-				case kafka.RevokedPartitions:
-					c.Unassign()
-				case *kafka.Message:
-					fmt.Printf("%% Message on %v, offset %v, time stamp %v\n", *e.TopicPartition.Topic, e.TopicPartition.Offset, e.Timestamp)
-				case kafka.PartitionEOF:
-					fmt.Printf("%% Reached %v\n", e)
-				case kafka.Error:
-					fmt.Fprintf(os.Stderr, "%% Error: %v\n", e)
-				}
-
-			}
-
-		}
-	}
-}
 func main() {
 	log.Default().SetFlags(log.LstdFlags | log.Lshortfile)
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)
 	route := mux.NewRouter()
-	route.HandleFunc("/start", handleStart).Methods("POST")
-	route.HandleFunc("/pause", handlePause).Methods("POST")
-	route.HandleFunc("/resume", handleResume).Methods("POST")
-	route.HandleFunc("/browse", handleBrowse).Methods("GET")
-	route.HandleFunc("/read", handleReading).Methods("GET")
-	route.HandleFunc("/stop", handleStop).Methods("PUT")
+	//route.HandleFunc("/read", handleLifeCycle).Methods("GET")
+	route.HandleFunc("/topic/{action}", handleLifeCycle).Methods("PUT")
 	s := fmt.Sprintf(":%d", cfg.ServingPort)
 	go func() {
 		log.Printf("starting server at port %d \n", cfg.ServingPort)

@@ -1,10 +1,12 @@
-# Go, Kubernetes, Twitter and Kafka
+# Go, Kubernetes and Kafka
+
 ## Overview
+This is the rest service to control the consumption of a kafka topic
 
-This repository is a sample project to work on the `twitter api` and `kafka` in `kubernetes` environment
-
-* Stream tweet then push into kafka topic
-* Deploy to kubernetes
+* read `get /topic/start`
+* stop `patch /topic/stop`
+* resume `patch /topic/resume`
+* pause `patch /topic/pause`
 
 ## Containerization
 
