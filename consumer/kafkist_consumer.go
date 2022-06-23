@@ -45,12 +45,10 @@ var (
 
 //BrowserPayload is a payload for the rest api
 type BrowserPayload struct {
-	TopicName      string `json:"topic_name"`
-	Broker         string `json:"broker"`
-	TimestampBegin string `json:"timestamp_begin"`
-	TimestampEnd   string `json:"timestamp_end"`
-	Offset         string `json:"offset_start"`
-	ConsumerGroup  string `json:"group"`
+	TopicName     string `json:"topic_name"`
+	Broker        string `json:"broker"`
+	Offset        string `json:"offset_start"`
+	ConsumerGroup string `json:"group"`
 }
 
 func init() {
@@ -162,13 +160,11 @@ func doStart(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 	} else {
 
-		if c, err := kafka.NewConsumer(&kafka.ConfigMap{"metadata.broker.list": p.Broker,
-			"security.protocol":               "PLAINTEXT",
-			"group.id":                        p.ConsumerGroup,
-			"auto.offset.reset":               p.Offset,
-			"go.application.rebalance.enable": true,
-			"request.timeout.ms":              60000,
-			"go.events.channel.enable":        true}); err != nil {
+		if c, err := kafka.NewConsumer(&kafka.ConfigMap{
+			"bootstrap.servers": p.Broker,
+			"group.id":          p.ConsumerGroup,
+			"auto.offset.reset": p.Offset,
+		}); err != nil {
 			panic(err)
 		} else {
 			if err := c.Subscribe(p.TopicName, nil); err != nil {
@@ -177,11 +173,7 @@ func doStart(writer http.ResponseWriter, request *http.Request) {
 					http.Error(writer, errWr.Error(), http.StatusInternalServerError)
 				}
 			} else {
-				//use go routine
-				//isExecuted := make(chan bool)
-
 				go consume(c)
-				//<-isExecuted
 				writer.Write([]byte("starting..."))
 
 			}
@@ -198,7 +190,7 @@ func consume(consumer *kafka.Consumer) {
 	for {
 		//log.Printf("current stop flag %v\n", stop)
 		if !stop {
-			if message, err := consumer.ReadMessage(time.Second * 10); err == nil {
+			if message, err := consumer.ReadMessage(-1); err == nil {
 				offset = message.TopicPartition.Offset.String()
 				messageTimeStamp = message.Timestamp.UnixMilli()
 				log.Printf("%s timestamp %v diff current and data timestamp %v\n", offset, messageTimeStamp, time.Now().UnixMilli()-message.Timestamp.UnixMilli())
@@ -220,7 +212,7 @@ func main() {
 	signal.Notify(ch, os.Interrupt)
 	route := mux.NewRouter()
 	//route.HandleFunc("/read", handleLifeCycle).Methods("GET")
-	route.HandleFunc("/topic/{action}", handleLifeCycle).Methods("PUT")
+	route.HandleFunc("/topic/{action}", handleLifeCycle).Methods("PUT", "GET")
 	s := fmt.Sprintf(":%d", cfg.ServingPort)
 	go func() {
 		log.Printf("starting server at port %d \n", cfg.ServingPort)
