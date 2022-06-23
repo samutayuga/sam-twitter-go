@@ -49,6 +49,8 @@ type BrowserPayload struct {
 	Broker         string `json:"broker"`
 	TimestampBegin string `json:"timestamp_begin"`
 	TimestampEnd   string `json:"timestamp_end"`
+	Offset         string `json:"offset_start"`
+	ConsumerGroup  string `json:"group"`
 }
 
 func init() {
@@ -99,24 +101,16 @@ func handleLifeCycle(writer http.ResponseWriter, request *http.Request) {
 		if isAllowed(action) {
 			handle(writer, request, action)
 		} else {
-			if _, errW := writer.Write([]byte(fmt.Sprintf("It is not allowed to %s on a %s state", action, currentState))); errW == nil {
-				writer.WriteHeader(http.StatusBadRequest)
-			} else {
-				writer.WriteHeader(http.StatusInternalServerError)
-			}
-
-			//	}
-
+			http.Error(writer, fmt.Sprintf("It is not allowed to %s on a %s state", action, currentState), http.StatusBadRequest)
 		}
 	} else {
-		if _, errW := writer.Write([]byte("Please provide action start, stop,resume,pause")); errW == nil {
+		if _, errW := writer.Write([]byte("Please provide action start, stop,resume,pause")); errW != nil {
 			writer.WriteHeader(http.StatusBadRequest)
-		} else {
-			writer.WriteHeader(http.StatusInternalServerError)
+			http.Error(writer, errW.Error(), http.StatusInternalServerError)
 		}
 	}
 }
-func getNextState(writer http.ResponseWriter, request *http.Request, action string) {
+func getNextState(writer http.ResponseWriter, action string) {
 	switch currentState {
 	case STARTED:
 		if action == STOP {
@@ -143,10 +137,8 @@ func getNextState(writer http.ResponseWriter, request *http.Request, action stri
 			stop = false
 		}
 	}
-	if _, errWrite := writer.Write([]byte(fmt.Sprintf("Successfully %s from %s", action, currentState))); errWrite == nil {
-		writer.WriteHeader(http.StatusOK)
-	} else {
-		writer.WriteHeader(http.StatusInternalServerError)
+	if _, errWrite := writer.Write([]byte(fmt.Sprintf("Successfully %s from %s", action, currentState))); errWrite != nil {
+		http.Error(writer, errWrite.Error(), http.StatusInternalServerError)
 	}
 }
 func handle(writer http.ResponseWriter, request *http.Request, action string) {
@@ -158,7 +150,7 @@ func handle(writer http.ResponseWriter, request *http.Request, action string) {
 
 	default:
 		//just update the state accordingly
-		getNextState(writer, request, action)
+		getNextState(writer, action)
 
 	}
 }
@@ -166,23 +158,23 @@ func doStart(writer http.ResponseWriter, request *http.Request) {
 	p := BrowserPayload{}
 	decoder := json.NewDecoder(request.Body)
 	if err := decoder.Decode(&p); err != nil {
-		log.Fatalf("error while encoding %v %v\n", request.Body, err)
+		log.Printf("error while encoding %v %v\n", request.Body, err)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
 	} else {
 
 		if c, err := kafka.NewConsumer(&kafka.ConfigMap{"metadata.broker.list": p.Broker,
-			"security.protocol": "PLAINTEXT",
-			"group.id":          "sam",
-			//"auto.offset.reset":               "earliest",
+			"security.protocol":               "PLAINTEXT",
+			"group.id":                        p.ConsumerGroup,
+			"auto.offset.reset":               p.Offset,
 			"go.application.rebalance.enable": true,
+			"request.timeout.ms":              60000,
 			"go.events.channel.enable":        true}); err != nil {
 			panic(err)
 		} else {
 			if err := c.Subscribe(p.TopicName, nil); err != nil {
 				if _, errWr := writer.Write([]byte(fmt.Sprintf("Error while subscribing to kafka topic %v ",
 					err))); errWr != nil {
-					writer.WriteHeader(http.StatusInternalServerError)
-				} else {
-					writer.WriteHeader(http.StatusInternalServerError)
+					http.Error(writer, errWr.Error(), http.StatusInternalServerError)
 				}
 			} else {
 				//use go routine
@@ -190,11 +182,11 @@ func doStart(writer http.ResponseWriter, request *http.Request) {
 
 				go consume(c)
 				//<-isExecuted
+				writer.Write([]byte("starting..."))
 
 			}
 
 		}
-		writer.WriteHeader(http.StatusOK)
 	}
 }
 func consume(consumer *kafka.Consumer) {
@@ -202,13 +194,16 @@ func consume(consumer *kafka.Consumer) {
 	var messageTimeStamp int64
 	log.Printf("start reading\n")
 	stop = false
+	currentState = STARTED
 	for {
 		//log.Printf("current stop flag %v\n", stop)
 		if !stop {
-			if message, err := consumer.ReadMessage(time.Second * 1); err == nil {
+			if message, err := consumer.ReadMessage(time.Second * 10); err == nil {
 				offset = message.TopicPartition.Offset.String()
 				messageTimeStamp = message.Timestamp.UnixMilli()
 				log.Printf("%s timestamp %v diff current and data timestamp %v\n", offset, messageTimeStamp, time.Now().UnixMilli()-message.Timestamp.UnixMilli())
+			} else {
+				log.Printf("error %v", err)
 			}
 		} else {
 			log.Printf("stop reading at offset %s for timestamp %v\n", offset, messageTimeStamp)
