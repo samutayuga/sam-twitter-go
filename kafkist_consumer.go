@@ -11,8 +11,54 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 )
+
+//StateStack is a stack of items
+type StateStack struct {
+	items []string
+	lock  sync.RWMutex
+}
+
+//New is a function to create a new stack of item
+func (s *StateStack) New() *StateStack {
+	//1. simply create an empty slices of Item
+	//2. stack is initialised with the empty slice
+	s.items = []string{}
+	return s
+}
+
+//Push is a function to add a new item into the stack
+func (s *StateStack) Push(t string) {
+	//3. lock before append to prevent different goroutine update it
+	s.lock.Lock()
+	s.items = append(s.items, t)
+	//4. unlock before append to prevent different goroutine update it
+	s.lock.Unlock()
+}
+
+//Pop is a function to get and remove a new item from the stack
+//remember the LIFO behavior of the stack
+func (s *StateStack) Pop() string {
+	//5. lock before get to prevent different goroutine update it
+	s.lock.Lock()
+	//6. get the item with the greatest index
+	item := s.items[len(s.items)-1]
+	//7. make a new slice where the last index is excluded
+	s.items = s.items[0 : len(s.items)-1]
+	//8. unlock before append to prevent different goroutine update it
+	s.lock.Unlock()
+	//9. return
+	return item
+}
+
+//Peek is to check the current state without removing it
+//from the stack
+//this is read operation so no locking is needed
+func (s *StateStack) Peek() string {
+	return s.items[len(s.items)-1]
+}
 
 type Consumer struct {
 	ReplayMode bool   `yaml:"replay-mode"`
@@ -28,19 +74,20 @@ type Config struct {
 }
 
 const (
-	START   = "start"
-	STARTED = "started"
-	STOP    = "stop"
-	STOPPED = "stopped"
-	RESUME  = "resume"
-	PAUSE   = "pause"
-	PAUSED  = "paused"
+	START       = "start"
+	STARTED     = "started"
+	STOP        = "stop"
+	STOPPED     = "stopped"
+	RESUME      = "resume"
+	PAUSE       = "pause"
+	PAUSED      = "paused"
+	SUCCESS_MSG = "Successfully %s from %s"
 )
 
 var (
-	cfg          = Config{}
-	stop         = false
-	currentState = STOPPED
+	cfg    = Config{}
+	stop   = false
+	states = StateStack{}
 )
 
 //BrowserPayload is a payload for the rest api
@@ -52,7 +99,8 @@ type BrowserPayload struct {
 }
 
 func init() {
-	currentState = STOPPED
+	states.New()
+	states.Push(STOPPED)
 	configLocation := os.Getenv("CONFIG_FILE")
 	if yFile, err := ioutil.ReadFile(configLocation); err == nil {
 		if errUnmarshall := yaml.Unmarshal(yFile, &cfg); errUnmarshall != nil {
@@ -63,7 +111,7 @@ func init() {
 	}
 }
 func isAllowed(action string) bool {
-	switch currentState {
+	switch states.Peek() {
 	case STARTED:
 		if action == STOP || action == PAUSE {
 			return true
@@ -99,7 +147,7 @@ func handleLifeCycle(writer http.ResponseWriter, request *http.Request) {
 		if isAllowed(action) {
 			handle(writer, request, action)
 		} else {
-			http.Error(writer, fmt.Sprintf("It is not allowed to %s on a %s state", action, currentState), http.StatusBadRequest)
+			http.Error(writer, fmt.Sprintf("It is not allowed to %s on a %s state", action, states.Peek()), http.StatusBadRequest)
 		}
 	} else {
 		if _, errW := writer.Write([]byte("Please provide action start, stop,resume,pause")); errW != nil {
@@ -108,34 +156,45 @@ func handleLifeCycle(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 }
-func getNextState(writer http.ResponseWriter, action string) {
-	switch currentState {
+func applyState(writer http.ResponseWriter, action string) {
+	var previousState string
+	switch states.Peek() {
 	case STARTED:
 		if action == STOP {
-			currentState = STOPPED
+			//currentState = STOPPED
+			previousState = states.Pop()
+			states.Push(STOPPED)
 
 		}
 		if action == PAUSE {
-			currentState = PAUSED
+			//currentState = PAUSED
+			previousState = states.Pop()
+			states.Push(PAUSED)
 
 		}
 		stop = true
 	case PAUSED:
 		if action == RESUME {
-			currentState = STARTED
+			//currentState = STARTED
+			previousState = states.Pop()
+			states.Push(STARTED)
 			stop = false
 		}
 		if action == STOP {
-			currentState = STOPPED
+			//currentState = STOPPED
+			previousState = states.Pop()
+			states.Push(STOPPED)
 			stop = true
 		}
 	case STOPPED:
 		if action == START {
-			currentState = STARTED
+			//currentState = STARTED
+			previousState = states.Pop()
+			states.Push(STARTED)
 			stop = false
 		}
 	}
-	if _, errWrite := writer.Write([]byte(fmt.Sprintf("Successfully %s from %s", action, currentState))); errWrite != nil {
+	if _, errWrite := writer.Write([]byte(fmt.Sprintf(SUCCESS_MSG, action, previousState))); errWrite != nil {
 		http.Error(writer, errWrite.Error(), http.StatusInternalServerError)
 	}
 }
@@ -148,7 +207,7 @@ func handle(writer http.ResponseWriter, request *http.Request, action string) {
 
 	default:
 		//just update the state accordingly
-		getNextState(writer, action)
+		applyState(writer, action)
 
 	}
 }
@@ -173,6 +232,7 @@ func doStart(writer http.ResponseWriter, request *http.Request) {
 					http.Error(writer, errWr.Error(), http.StatusInternalServerError)
 				}
 			} else {
+
 				go consume(c)
 				writer.Write([]byte("starting..."))
 
@@ -181,12 +241,20 @@ func doStart(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 }
+func transit(targetState string) {
+	//state exchange
+	//1. pop
+	prevState := states.Pop()
+	//2. push
+	states.Push(targetState)
+	log.Printf("Change from %s to %s\n", prevState, targetState)
+
+}
 func consume(consumer *kafka.Consumer) {
 	var offset string
 	var messageTimeStamp int64
 	log.Printf("start reading\n")
 	stop = false
-	currentState = STARTED
 	for {
 		//log.Printf("current stop flag %v\n", stop)
 		if !stop {
