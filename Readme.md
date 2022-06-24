@@ -105,5 +105,17 @@ volumes:
 ./kafka-console-consumer.sh --bootstrap-server 127.0.0.1:9093 --from-beginning --topic RAW-FIXM42-OPER.v3 --property print.timestamp=true --property print.value=false --property print.offset=true
 ```
 
+`describe the topic`
+
+```shell
+./kafka-topics.sh --bootstrap-server 127.0.0.1:9093 --topic RAW-FIXM42-OPER.v2 --describe
+```
+
+`Check  the consumer group`
+
+```shell
+./kafka-consumer-groups.sh --bootstrap-server 127.0.0.1:9093 --group=moge --describe
+```
+
 
 
