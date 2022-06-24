@@ -74,14 +74,14 @@ type Config struct {
 }
 
 const (
-	START       = "start"
-	STARTED     = "started"
-	STOP        = "stop"
-	STOPPED     = "stopped"
-	RESUME      = "resume"
-	PAUSE       = "pause"
-	PAUSED      = "paused"
-	SUCCESS_MSG = "Successfully %s from %s"
+	START      = "start"
+	STARTED    = "started"
+	STOP       = "stop"
+	STOPPED    = "stopped"
+	RESUME     = "resume"
+	PAUSE      = "pause"
+	PAUSED     = "paused"
+	SuccessMsg = "Successfully %s from %s"
 )
 
 var (
@@ -194,7 +194,7 @@ func applyState(writer http.ResponseWriter, action string) {
 			stop = false
 		}
 	}
-	if _, errWrite := writer.Write([]byte(fmt.Sprintf(SUCCESS_MSG, action, previousState))); errWrite != nil {
+	if _, errWrite := writer.Write([]byte(fmt.Sprintf(SuccessMsg, action, previousState))); errWrite != nil {
 		http.Error(writer, errWrite.Error(), http.StatusInternalServerError)
 	}
 }
