@@ -85,17 +85,21 @@ const (
 )
 
 var (
-	cfg    = Config{}
-	stop   = false
-	states = StateStack{}
+	cfg             = Config{}
+	stop            = false
+	states          = StateStack{}
+	currentInstance = BrowserPayload{}
 )
+
+//var currentInstance BrowserPayload
 
 //BrowserPayload is a payload for the rest api
 type BrowserPayload struct {
-	TopicName     string `json:"topic_name"`
-	Broker        string `json:"broker"`
-	Offset        string `json:"offset_start"`
-	ConsumerGroup string `json:"group"`
+	TopicName     string `json:"topic_name,omitempty"`
+	Broker        string `json:"broker,omitempty"`
+	Offset        string `json:"offset_start,omitempty"`
+	ConsumerGroup string `json:"group,omitempty"`
+	State         string `json:"state,omitempty"`
 }
 
 func init() {
@@ -157,14 +161,17 @@ func handleLifeCycle(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 func getState(writer http.ResponseWriter, request *http.Request) {
-
-	if _, errW := writer.Write([]byte(fmt.Sprintf("current state %s", states.Peek()))); errW != nil {
-		http.Error(writer, errW.Error(), http.StatusInternalServerError)
+	currentInstance.State = states.Peek()
+	if content, err := json.Marshal(currentInstance); err == nil {
+		if _, errW := writer.Write(content); errW != nil {
+			http.Error(writer, errW.Error(), http.StatusInternalServerError)
+		}
 	}
+
 }
 func applyState(writer http.ResponseWriter, action string) {
-	var previousState string
-	switch states.Peek() {
+	prevState := states.Peek()
+	switch prevState {
 	case STARTED:
 		if action == STOP {
 			transit(STOPPED)
@@ -190,7 +197,7 @@ func applyState(writer http.ResponseWriter, action string) {
 			stop = false
 		}
 	}
-	if _, errWrite := writer.Write([]byte(fmt.Sprintf(SuccessMsg, action, previousState))); errWrite != nil {
+	if _, errWrite := writer.Write([]byte(fmt.Sprintf(SuccessMsg, action, prevState))); errWrite != nil {
 		http.Error(writer, errWrite.Error(), http.StatusInternalServerError)
 	}
 }
@@ -228,6 +235,8 @@ func doStart(writer http.ResponseWriter, request *http.Request) {
 					http.Error(writer, errWr.Error(), http.StatusInternalServerError)
 				}
 			} else {
+				transit(STARTED)
+				currentInstance = p
 
 				go consume(c)
 				writer.Write([]byte("starting..."))
