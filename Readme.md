@@ -117,5 +117,10 @@ volumes:
 ./kafka-consumer-groups.sh --bootstrap-server 127.0.0.1:9093 --group=moge --describe
 ```
 
+`Reset offset`
+
+```shell
+./kafka-consumer-groups.sh --bootstrap-server=127.0.0.1:9093 --group=moge --topic=RAW-FIXM42-OPER.v2 --execute --reset-offsets --to-earliest
+```
 
 
