@@ -123,4 +123,22 @@ volumes:
 ./kafka-consumer-groups.sh --bootstrap-server=127.0.0.1:9093 --group=moge --topic=RAW-FIXM42-OPER.v2 --execute --reset-offsets --to-earliest
 ```
 
+# Add the a container into an existing network
+By default a container cannot access the other container.
+In order for a container can access the other container, they are needed to be within the same network.
+
+`Check the network where a container belong`
+```shell
+docker network inspect -f '{{range .Containers}}{{.Name}} {{end}}' k8s_default
+```
+
+`Add a container into a network`
+
+```shell
+docker network connect k8s_default kafkarest
+```
+
+```shell
+docker network inspect -f '{{range .Containers}}{{.Name}} {{end}}' [network]
+```
 
