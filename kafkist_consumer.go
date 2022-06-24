@@ -156,41 +156,37 @@ func handleLifeCycle(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 }
+func getState(writer http.ResponseWriter, request *http.Request) {
+
+	if _, errW := writer.Write([]byte(fmt.Sprintf("current state %s", states.Peek()))); errW != nil {
+		http.Error(writer, errW.Error(), http.StatusInternalServerError)
+	}
+}
 func applyState(writer http.ResponseWriter, action string) {
 	var previousState string
 	switch states.Peek() {
 	case STARTED:
 		if action == STOP {
-			//currentState = STOPPED
-			previousState = states.Pop()
-			states.Push(STOPPED)
+			transit(STOPPED)
 
 		}
 		if action == PAUSE {
-			//currentState = PAUSED
-			previousState = states.Pop()
-			states.Push(PAUSED)
+			transit(PAUSED)
 
 		}
 		stop = true
 	case PAUSED:
 		if action == RESUME {
-			//currentState = STARTED
-			previousState = states.Pop()
-			states.Push(STARTED)
+			transit(STARTED)
 			stop = false
 		}
 		if action == STOP {
-			//currentState = STOPPED
-			previousState = states.Pop()
-			states.Push(STOPPED)
+			transit(STOPPED)
 			stop = true
 		}
 	case STOPPED:
 		if action == START {
-			//currentState = STARTED
-			previousState = states.Pop()
-			states.Push(STARTED)
+			transit(STARTED)
 			stop = false
 		}
 	}
@@ -280,7 +276,8 @@ func main() {
 	signal.Notify(ch, os.Interrupt)
 	route := mux.NewRouter()
 	//route.HandleFunc("/read", handleLifeCycle).Methods("GET")
-	route.HandleFunc("/topic/{action}", handleLifeCycle).Methods("PUT", "GET")
+	route.HandleFunc("/topic", getState).Methods("GET")
+	route.HandleFunc("/topic/{action}", handleLifeCycle).Methods("PUT")
 	s := fmt.Sprintf(":%d", cfg.ServingPort)
 	go func() {
 		log.Printf("starting server at port %d \n", cfg.ServingPort)
