@@ -271,8 +271,17 @@ func consume(consumer *kafka.Consumer) {
 				log.Printf("error %v", err)
 			}
 		} else {
-			log.Printf("stop reading at offset %s for timestamp %v\n", offset, messageTimeStamp)
-			break
+			if states.Peek() == PAUSED {
+				log.Printf("get signal to pause...")
+				time.Sleep(time.Second * 5)
+			}
+			if states.Peek() == STOPPED {
+				log.Printf("stop reading at offset %s for timestamp %v\n", offset, messageTimeStamp)
+				consumer.Unsubscribe()
+				consumer.Close()
+				break
+			}
+
 		}
 
 		//executed <- true
