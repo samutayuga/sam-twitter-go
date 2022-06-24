@@ -1,7 +1,8 @@
 FROM golang
+ENV CONFIG_FILE /go/src/sam-twitter-go/config.yaml
 COPY . /go/src/sam-twitter-go
 WORKDIR /go/src/sam-twitter-go
 #RUN go mod init
 RUN go get ./...
-ENTRYPOINT go run main.go
+ENTRYPOINT go run kafkist_consumer.go
 EXPOSE 8872

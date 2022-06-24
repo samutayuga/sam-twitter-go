@@ -21,5 +21,8 @@ services:
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=CLIENT
     volumes:
       - /Users/putumas/kafka-persistence:/bitnami/kafka
+    expose:
+      - "9092"
+      - "9093"
     depends_on:
       - zookeeper

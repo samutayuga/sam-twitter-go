@@ -1,0 +1,9 @@
+---
+version: '2'
+services:
+  kafkarest:
+    image: samutup/kafkarest:1.0.0
+    hostname: kafkarest
+    container_name: kafkarest
+    ports:
+      - "8872:8872"
