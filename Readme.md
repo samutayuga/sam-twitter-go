@@ -142,3 +142,5 @@ docker network connect k8s_default kafkarest
 docker network inspect -f '{{range .Containers}}{{.Name}} {{end}}' [network]
 ```
 
+# Minimize the docker image size
+
