@@ -214,4 +214,55 @@ samutup/kafkarest                           1.0.0         8be48b3ad8f8   15 minu
 ```
 That is not bad, `33MB`
 
+## Launch the app
 
+It is achieved by executing the `docker run`. Or using the `docker-compose up -d` command.
+Let's do it in `docker compose` way.
+
+`Prepare docker compose configuration file`
+
+```yaml
+---
+version: '2'
+services:
+  kafkarest:
+    image: samutup/kafkarest:1.0.0
+    hostname: kafkarest
+    container_name: kafkarest
+    ports:
+      - "8872:8872"
+```
+
+`run`
+
+```shell
+docker-compose up -d
+```
+Successful message
+
+```text
+Creating kafkarest ... done
+```
+
+`tail the log`
+
+```shell
+docker-compose logs --follow
+```
+Successful message
+
+```text
+Attaching to kafkarest--follow
+kafkarest    | 2022/06/26 07:06:00 kafkist_consumer.go:304: starting server at port 8872 
+```
+
+`stop`
+
+```shell
+docker-compose stop
+```
+`remove container`
+
+```shell
+docker-compose rm
+```
