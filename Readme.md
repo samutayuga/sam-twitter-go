@@ -180,21 +180,23 @@ EXPOSE 8872
 
 ## go app binary
 
-The first build stage is started from `FROM golang:1.18-buster AS builder`. The goal is to create the binary from `*.go` files.
-The dependencies are resolved through the `go module`. It is the reason why there are steps to copy both `go.mod` and `go.sum`. 
-The `RUN go mod download` is to download all the dependencies. The following step is copying the source codes from local 
+* The first build stage is started from `FROM golang:1.18-buster AS builder`. 
+* The goal is to create the binary from `*.go` files.
+* The dependencies are resolved through the `go module`. It is the reason why there are steps to copy both `go.mod` and `go.sum`. 
+* The `RUN go mod download` is to download all the dependencies. The following step is copying the source codes from local 
 to the docker context at current working directory. Remember `WORKDIR /app` just after the first line
-Finally, `RUN go build -o /kafkist_consumer` is building the binary from source codes and output it as `/kafkist_consumer`
-After this step, under the `/app` there will be `kafkist_consumer` binary file.
+* Finally, `RUN go build -o /kafkist_consumer` is building the binary from source codes and output it as `/kafkist_consumer`
+* After this step, under the `/app` there will be `kafkist_consumer` binary file.
 
 ## go app deployment
-The second stage is started from `FROM gcr.io/distroless/base-debian10 as baseImage`. The goal is to copy the binary created from first stage
-into the `/app` directory of current folder. This step is invoked by the line, `COPY --from=builder /kafkist_consumer ./kafkist_consumer`
-`COPY config.yaml ./config.yaml` is to copy the config.yaml from local working directory (developer machine) into 
+* The second stage is started from `FROM gcr.io/distroless/base-debian10 as baseImage`. The goal is to copy the binary created from first stage
+into the `/app` directory of current folder. 
+* This step is invoked by the line, `COPY --from=builder /kafkist_consumer ./kafkist_consumer`
+* `COPY config.yaml ./config.yaml` is to copy the config.yaml from local working directory (developer machine) into 
 `/app` directory
-`ENV CONFIG_FILE=/app/config.yaml` is to create an environment variable required by the app
-`ENTRYPOINT ["/app/kafkist_consumer"]` is to define the entry point for launching application
-`EXPOSE 8872` is to expose port 8872 so that it is visible from outside of container.
+* `ENV CONFIG_FILE=/app/config.yaml` is to create an environment variable required by the app
+* `ENTRYPOINT ["/app/kafkist_consumer"]` is to define the entry point for launching application
+* `EXPOSE 8872` is to expose port 8872 so that it is visible from outside of container.
 
 ## Build
 
