@@ -219,6 +219,9 @@ func handle(writer http.ResponseWriter, request *http.Request, action string) {
 
 	}
 }
+func ping(writer http.ResponseWriter, request *http.Request) {
+	writer.WriteHeader(http.StatusOK)
+}
 func doStart(writer http.ResponseWriter, request *http.Request) {
 	p := BrowserPayload{}
 	decoder := json.NewDecoder(request.Body)
@@ -302,6 +305,7 @@ func main() {
 	signal.Notify(ch, os.Interrupt)
 	route := mux.NewRouter()
 	//route.HandleFunc("/read", handleLifeCycle).Methods("GET")
+	route.HandleFunc("/", ping).Methods(http.MethodGet)
 	route.HandleFunc("/topic", getState).Methods(http.MethodGet)
 	//route.HandleFunc("/topic/start", doStart).Methods(http.MethodPost)
 	route.HandleFunc("/topic/{action}", handleLifeCycle).Methods(http.MethodPost, http.MethodPatch)
