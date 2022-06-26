@@ -3,8 +3,35 @@
 ## Overview
 This is the rest service to control the consumption of a kafka topic
 
-* read `get /topic/start`
+* start `PUT /topic/start`
+A rest call to start the consumption for a given topic and consumer group. The payload for `start`
+
+`request`
+
+```text
+PUT /topic/start
+ 
+{
+"topic_name": "RAW-FIXM42-OPER.v2",
+"broker": "kafka:9092",
+"offset_start": "earliest",
+"group": "aimee"
+}
+ 
+```
+`response`
+
+```text
+
+HTTP/1.1 200 OK
+Date: Sun, 26 Jun 2022 07:43:26 GMT
+Content-Length: 11
+Content-Type: text/plain; charset=utf-8
+ 
+starting...
+```
 * stop `patch /topic/stop`
+
 * resume `patch /topic/resume`
 * pause `patch /topic/pause`
 
