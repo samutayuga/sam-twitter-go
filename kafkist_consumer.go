@@ -144,14 +144,18 @@ func handleLifeCycle(writer http.ResponseWriter, request *http.Request) {
 	//stop = true
 	//extract the path parameter from request
 	reqUri := mux.Vars(request)
+	methodName := request.Method
 
 	if action, ok := reqUri["action"]; ok {
+		log.Printf("%s request with path param %s\n", methodName, action)
 		//if action == START {
 		//if it needs to start, check the current state
 		if isAllowed(action) {
 			handle(writer, request, action)
 		} else {
-			http.Error(writer, fmt.Sprintf("It is not allowed to %s on a %s state", action, states.Peek()), http.StatusBadRequest)
+			msg := fmt.Sprintf("It is not allowed to %s on a %s state", action, states.Peek())
+			log.Println(msg)
+			http.Error(writer, msg, http.StatusBadRequest)
 		}
 	} else {
 		if _, errW := writer.Write([]byte("Please provide action start, stop,resume,pause")); errW != nil {
@@ -161,6 +165,7 @@ func handleLifeCycle(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 func getState(writer http.ResponseWriter, request *http.Request) {
+	log.Printf("%s request\n", request.Method)
 	currentInstance.State = states.Peek()
 	if content, err := json.Marshal(currentInstance); err == nil {
 		if _, errW := writer.Write(content); errW != nil {
@@ -297,8 +302,9 @@ func main() {
 	signal.Notify(ch, os.Interrupt)
 	route := mux.NewRouter()
 	//route.HandleFunc("/read", handleLifeCycle).Methods("GET")
-	route.HandleFunc("/topic", getState).Methods("GET")
-	route.HandleFunc("/topic/{action}", handleLifeCycle).Methods("PUT")
+	route.HandleFunc("/topic", getState).Methods(http.MethodGet)
+	//route.HandleFunc("/topic/start", doStart).Methods(http.MethodPost)
+	route.HandleFunc("/topic/{action}", handleLifeCycle).Methods(http.MethodPost, http.MethodPatch)
 	s := fmt.Sprintf(":%d", cfg.ServingPort)
 	go func() {
 		log.Printf("starting server at port %d \n", cfg.ServingPort)
