@@ -9,7 +9,7 @@ A rest call to start the consumption for a given topic and consumer group. The p
 `request`
 
 ```text
-PUT /topic/start
+POST /topic/start
  
 {
 "topic_name": "RAW-FIXM42-OPER.v2",
@@ -33,6 +33,7 @@ starting...
 * stop `patch /topic/stop`
 
 * resume `patch /topic/resume`
+
 * pause `patch /topic/pause`
 
 ## Containerization
