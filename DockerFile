@@ -1,8 +1,24 @@
-FROM golang
-ENV CONFIG_FILE /go/src/sam-twitter-go/config.yaml
-COPY . /go/src/sam-twitter-go
-WORKDIR /go/src/sam-twitter-go
-#RUN go mod init
-RUN go get ./...
-ENTRYPOINT go run kafkist_consumer.go
+# syntax=docker/dockerfile:1
+FROM golang:1.18-buster AS builder
+WORKDIR /app
+COPY go.mod ./
+COPY go.sum ./
+RUN go mod download
+
+
+COPY *.go ./
+
+
+RUN go build -o /kafkist_consumer
+# Final Stage - Stage 2
+FROM gcr.io/distroless/base-debian10 as baseImage
+WORKDIR /app
+
+COPY --from=builder /kafkist_consumer ./kafkist_consumer
+COPY config.yaml ./config.yaml
+
+ENV CONFIG_FILE=/app/config.yaml
+
+ENTRYPOINT ["/app/kafkist_consumer"]
 EXPOSE 8872
+

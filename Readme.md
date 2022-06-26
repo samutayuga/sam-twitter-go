@@ -123,9 +123,8 @@ volumes:
 ./kafka-consumer-groups.sh --bootstrap-server=127.0.0.1:9093 --group=moge --topic=RAW-FIXM42-OPER.v2 --execute --reset-offsets --to-earliest
 ```
 
-# Add the a container into an existing network
-By default a container cannot access the other container.
-In order for a container can access the other container, they are needed to be within the same network.
+# Add a container into an existing network
+By default a container cannot access the other container. In order for that to get to work, they are needed to be within the same network.
 
 `Check the network where a container belong`
 ```shell
@@ -143,4 +142,39 @@ docker network inspect -f '{{range .Containers}}{{.Name}} {{end}}' [network]
 ```
 
 # Minimize the docker image size
+`Strategy`
+
+> Use the multi stage docker build
+
+* First stage is to build binary from the source codes
+
+* Second stage is to get the binary from first stage then put it in a image built from relatively small image, such as `scratch`
+
+`Materialize`
+
+```shell
+# syntax=docker/dockerfile:1
+FROM golang:1.18-buster AS builder
+WORKDIR /app
+COPY go.mod ./
+COPY go.sum ./
+RUN go mod download
+
+
+COPY *.go ./
+
+
+RUN go build -o /kafkist_consumer
+# Final Stage - Stage 2
+FROM gcr.io/distroless/base-debian10 as baseImage
+WORKDIR /app
+
+COPY --from=builder /kafkist_consumer ./kafkist_consumer
+COPY config.yaml ./config.yaml
+
+ENV CONFIG_FILE=/app/config.yaml
+
+ENTRYPOINT ["/app/kafkist_consumer"]
+EXPOSE 8872
+```
 
