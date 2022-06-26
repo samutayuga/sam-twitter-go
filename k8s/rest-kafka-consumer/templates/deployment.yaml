@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "sam-twitter.fullname" . }}
+  name: {{ include "rest-kafka-consumer.fullname" . }}
   labels:
-    {{- include "sam-twitter.labels" . | nindent 4 }}
+    {{- include "rest-kafka-consumer.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "sam-twitter.selectorLabels" . | nindent 6 }}
+      {{- include "rest-kafka-consumer.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -18,13 +18,13 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "sam-twitter.selectorLabels" . | nindent 8 }}
+        {{- include "rest-kafka-consumer.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "sam-twitter.serviceAccountName" . }}
+      serviceAccountName: {{ include "rest-kafka-consumer.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -53,30 +53,10 @@ spec:
           env:
             - name: CONFIG_FILE
               value: /go/src/configdir/sam-config.yaml
-            - name: TWITTER_CONSUMER_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: twitter-account
-                  key: consumer-key
-            - name: TWITTER_CONSUMER_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: twitter-account
-                  key: consumer-secret
-            - name: TWITTER_ACCESS_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: twitter-account
-                  key: access-token
-            - name: TWITTER_ACCESS_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: twitter-account
-                  key: access-secret
       volumes:
         - name: config-dir
           configMap:
-            name: {{ include "sam-twitter.fullname" . }}
+            name: {{ include "rest-kafka-consumer.fullname" . }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

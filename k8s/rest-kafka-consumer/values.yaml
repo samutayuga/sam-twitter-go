@@ -5,12 +5,14 @@
 replicaCount: 1
 
 image:
-  repository: samutup/sam-twitter
+  repository: samutup/kafkarest
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "1.0.0"
+  tag: "1.0.1"
 
-imagePullSecrets: []
+imagePullSecrets:
+  - name: registry
+  - name: atwin-secrets
 nameOverride: ""
 fullnameOverride: ""
 
@@ -37,26 +39,29 @@ securityContext: {}
   # runAsUser: 1000
 
 service:
-  type: NodePort
-  port: 80
+  type: ClusterIP
+  port: 8872
 
 ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
+  ingressClassName: kong
+  enabled: true
+  domain: dev.atwin.airlab.aero
+  annotations:
+    konghq.com/plugins: atwin-oidc,atwin-request-transformer,atwin-cors
   hosts:
-    - host: chart-example.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
+    - host: rest-kafka-consumer.dev.atwin.airlab.aero
+      paths: ["/"]
   tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
+#    - hosts:
+#        - #@ data.values.ingress.host
 
-resources: {}
+resources:
+  requests:
+    cpu: 5m
+    memory: 32Mi
+  limits:
+    cpu: 800m
+    memory: 128Mi
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
@@ -75,10 +80,17 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
-nodeSelector: {}
+#nodeSelector: {}
 
-tolerations: []
+#tolerations: []
+tolerations:
+  - key: "NodeType"
+    operator: "Equal"
+    value: "app"
+    effect: "NoSchedule"
 
+nodeSelector:
+  type: app
 affinity: {}
 samConfig:
   serving_port: 8872
@@ -91,3 +103,5 @@ samConfig:
     - bitcoin
     - nft
     - psle
+
+
