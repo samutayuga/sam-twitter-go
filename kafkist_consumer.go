@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"text/template"
 	"time"
 )
 
@@ -89,6 +90,7 @@ var (
 	stop            = false
 	states          = StateStack{}
 	currentInstance = BrowserPayload{}
+	msgTemplate     *template.Template
 )
 
 //var currentInstance BrowserPayload
@@ -103,6 +105,13 @@ type BrowserPayload struct {
 }
 
 func init() {
+	//initialize the template
+	var err error
+	if msgTemplate, err = template.ParseGlob("*.gotmpl"); err != nil {
+		log.Fatalf("error while parsing the template %v\n", err)
+	} else {
+		log.Printf("template %s to display is initialized\n", msgTemplate.Name())
+	}
 	states.New()
 	states.Push(STOPPED)
 	configLocation := os.Getenv("CONFIG_FILE")
@@ -274,7 +283,13 @@ func consume(consumer *kafka.Consumer) {
 			if message, err := consumer.ReadMessage(-1); err == nil {
 				offset = message.TopicPartition.Offset.String()
 				messageTimeStamp = message.Timestamp.UnixMilli()
-				log.Printf("%s timestamp %v diff current and data timestamp %v\n", offset, messageTimeStamp, time.Now().UnixMilli()-message.Timestamp.UnixMilli())
+				//currentTime := time.Now().UnixMilli()
+				timeDuration := time.Since(time.UnixMilli(messageTimeStamp))
+				//log.Printf("offset>%s,posted %v ago\n", offset, timeDuration)
+				txt := fmt.Sprintf("current time %v offset %s was posted %s ago", time.Now().Format("2006-01-02 15:04:05.000"), offset, timeDuration.Truncate(time.Millisecond).String())
+				if errDisplay := msgTemplate.ExecuteTemplate(os.Stdout, "displayer.gotmpl", txt); errDisplay != nil {
+					log.Printf("error while writing into template %v\n", errDisplay)
+				}
 			} else {
 				log.Printf("error %v", err)
 			}
