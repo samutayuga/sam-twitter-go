@@ -3,6 +3,7 @@ FROM golang:1.18-buster AS builder
 WORKDIR /app
 COPY go.mod ./
 COPY go.sum ./
+
 RUN go mod download
 
 
@@ -16,7 +17,7 @@ WORKDIR /app
 
 COPY --from=builder /kafkist_consumer ./kafkist_consumer
 COPY config.yaml ./config.yaml
-
+COPY displayer.gotmpl ./displayer.gotmpl
 ENV CONFIG_FILE=/app/config.yaml
 
 ENTRYPOINT ["/app/kafkist_consumer"]
