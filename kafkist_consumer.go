@@ -59,15 +59,15 @@ func (d *DoublyLinkedList) Insert(duration time.Duration) {
 	}
 }
 func traverse(aNode *Node) {
-	log.Printf("%d\n", aNode.Data)
+	fmt.Printf("%s\n", aNode.Data.String())
 	if aNode.Next != nil {
 		traverse(aNode.Next)
 	}
 }
 func traverseBack(aNode *Node) {
-	log.Printf("%d\n", aNode.Data)
+	fmt.Printf("%s\n", aNode.Data.String())
 	if aNode.Previous != nil {
-		traverse(aNode.Previous)
+		traverseBack(aNode.Previous)
 	}
 }
 func (d *DoublyLinkedList) traverseFromHead() {
@@ -81,6 +81,8 @@ func (d *DoublyLinkedList) traverseFromTail() {
 func (d *DoublyLinkedList) Delete() *Node {
 	newTail := d.Tail.Previous
 	deleted := d.Tail
+	prevNode := d.Tail.Previous
+	prevNode.Next = nil
 	d.Tail = newTail
 	return deleted
 }
