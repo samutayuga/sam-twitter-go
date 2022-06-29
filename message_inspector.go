@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 )
@@ -193,27 +192,4 @@ func (q *DateQueue) Dequeue() *time.Duration {
 	}
 	q.lock.Unlock()
 	return nil
-}
-
-func doConsume(tm *time.Duration, durationQueue DurationQueue, completed chan bool) {
-	//var nextTm *time.Duration
-	var diff float64
-	if nextTm := durationQueue.Dequeue(); nextTm != nil {
-
-		//compare
-		diff = nextTm.Seconds() - tm.Seconds()
-		log.Printf("diff %f\n", diff)
-		doConsume(nextTm, durationQueue, completed)
-	} else {
-		completed <- true
-	}
-}
-func ConsumeQueue(durationQueue DurationQueue, completed chan bool) {
-	//first content
-	if firstTime := durationQueue.Dequeue(); firstTime != nil {
-		doConsume(firstTime, durationQueue, completed)
-	} else {
-		completed <- true
-	}
-
 }

@@ -32,16 +32,18 @@ func TestDurationQueue_Enqueue(t *testing.T) {
 
 func TestDateQueue_Dequeue(t *testing.T) {
 	q := DurationQueue{}
-	isDone := make(chan bool)
-
 	for _, dateStr := range date {
 		if past, err := time.Parse(time.RFC3339, dateStr.dateString); err == nil {
 			diff := time.Since(past)
-			q.Enqueue(diff)
-			go ConsumeQueue(q, isDone)
+			if dur := q.Dequeue(); dur != nil {
+				diffArr := dur.Seconds() - diff.Seconds()
+				fmt.Printf("diff>%f\n", diffArr)
+				q.Enqueue(diff)
+			} else {
+				q.Enqueue(diff)
+			}
+
 		}
 	}
-	result := <-isDone
-	fmt.Printf("result %v", result)
 
 }

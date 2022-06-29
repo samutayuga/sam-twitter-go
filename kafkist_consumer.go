@@ -232,18 +232,32 @@ func consume(consumer *kafka.Consumer) {
 	log.Printf("start reading\n")
 	stop = false
 	queueTime := DurationQueue{}
-	isDone := make(chan bool)
-	go ConsumeQueue(queueTime, isDone)
+	//isDone := make(chan bool)
+	//go ConsumeQueue(queueTime, isDone)
+	//counter := 0
 	for {
 		//log.Printf("current stop flag %v\n", stop)
 		if !stop {
 			if message, err := consumer.ReadMessage(-1); err == nil {
 				offset = message.TopicPartition.Offset.String()
-				//messageTimeStamp = message.Timestamp.UnixMilli()
-				timeDuration := time.Since(message.Timestamp)
-				queueTime.Enqueue(timeDuration)
+				//the time difference from message timestamp to current time
+				//the earlier the timestamp the bigger the differences for the same current time
+				currentDuration := time.Since(message.Timestamp)
+				var diff = 0.0
+				//get from queue
+				if previousDuration := queueTime.Dequeue(); previousDuration != nil {
+					//1.compare with the new one
+					diff = previousDuration.Seconds() - currentDuration.Seconds()
+					//fmt.Printf("diff> %f\n", previousDuration.Seconds()-currentDuration.Seconds())
+					//2. enqueue for current iteration
+					queueTime.Enqueue(currentDuration)
 
-				txt := fmt.Sprintf("current time %v offset %s was posted %s ago", time.Now().Format("2006-01-02 15:04:05.000"), offset, timeDuration.Truncate(time.Millisecond).String())
+				} else {
+					//2. if it is empty then enqueue
+					queueTime.Enqueue(currentDuration)
+				}
+
+				txt := fmt.Sprintf("at %v offset %s arrived %s ago, relative duration %f", time.Now().Format("2006-01-02 15:04:05.000"), offset, currentDuration.Truncate(time.Millisecond).String(), diff)
 				if errDisplay := msgTemplate.ExecuteTemplate(os.Stdout, "displayer.gotmpl", txt); errDisplay != nil {
 					log.Printf("error while writing into template %v\n", errDisplay)
 				}
