@@ -232,9 +232,6 @@ func consume(consumer *kafka.Consumer) {
 	log.Printf("start reading\n")
 	stop = false
 	queueTime := DurationQueue{}
-	//isDone := make(chan bool)
-	//go ConsumeQueue(queueTime, isDone)
-	//counter := 0
 	for {
 		//log.Printf("current stop flag %v\n", stop)
 		if !stop {
@@ -248,7 +245,6 @@ func consume(consumer *kafka.Consumer) {
 				if previousDuration := queueTime.Dequeue(); previousDuration != nil {
 					//1.compare with the new one
 					diff = previousDuration.Seconds() - currentDuration.Seconds()
-					//fmt.Printf("diff> %f\n", previousDuration.Seconds()-currentDuration.Seconds())
 					//2. enqueue for current iteration
 					queueTime.Enqueue(currentDuration)
 
