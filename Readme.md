@@ -296,3 +296,23 @@ docker-compose stop
 ```shell
 docker-compose rm
 ```
+# Comparing message timestamp
+As far as the replay use case is a concern, when the message arrive in the topic destination is crucial.
+More over, the time when it is posted into the topic relative to one another is crucial.
+The consumer assumes that a message comes 4 seconds or earlier one after another, within the same context.
+If 2 messages arrive at the same time, for example it will break the graphical aspect.
+Running this tool is part of the way to debug if the message producer behaves as expected, such as,
+a message is posted at a consistent manner.
+
+## Logic
+
+* consume the message and take the timestamp. Get duration between current system timestamp and message timestamp
+* posted the duration of the time difference to the queue.
+* another go routine will dequeue it one by one and compare with its adjacent element.
+* If the difference is more than 4 seconds log a warning
+
+## Implementation
+The underlying implementation is `queue` based on `doubly linked list` data structure.
+This is to make sure the O(1) constant running time complexity when enqueue and dequeue.
+
+
