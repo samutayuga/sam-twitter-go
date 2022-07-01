@@ -249,7 +249,7 @@ func consume(consumer *kafka.Consumer) {
 					queueTime.Enqueue(currentDuration)
 
 				} else {
-					//2. if it is empty then enqueue
+					//3. if it is empty then enqueue
 					queueTime.Enqueue(currentDuration)
 				}
 
