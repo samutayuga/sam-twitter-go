@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "rest-kafka-consumer.fullname" . }}
   labels:
@@ -11,6 +11,15 @@ spec:
   selector:
     matchLabels:
       {{- include "rest-kafka-consumer.selectorLabels" . | nindent 6 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: kafkarest
+      spec:
+        accessModes: [ "ReadWriteMany" ]
+        storageClassName: efs
+        resources:
+          requests:
+            storage: 10Mi
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -69,3 +78,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+

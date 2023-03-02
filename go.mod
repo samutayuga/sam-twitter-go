@@ -12,5 +12,6 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/mokhtarimokhtar/goasterix v0.3.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 )
