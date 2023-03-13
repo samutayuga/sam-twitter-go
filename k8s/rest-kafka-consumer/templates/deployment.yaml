@@ -8,6 +8,7 @@ spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
+  serviceName: {{ include "rest-kafka-consumer.fullname" .}}
   selector:
     matchLabels:
       {{- include "rest-kafka-consumer.selectorLabels" . | nindent 6 }}
@@ -15,8 +16,8 @@ spec:
     - metadata:
         name: kafkarest
       spec:
-        accessModes: [ "ReadWriteMany" ]
-        storageClassName: efs
+        accessModes: [ "ReadWriteOnce" ]
+        #storageClassName: manual
         resources:
           requests:
             storage: 10Mi

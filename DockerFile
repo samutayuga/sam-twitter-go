@@ -9,6 +9,8 @@ RUN go mod download
 
 COPY *.go ./
 
+RUN go mod tidy
+
 
 RUN go build -o /kafkist_consumer
 # Final Stage - Stage 2
