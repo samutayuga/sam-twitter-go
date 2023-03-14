@@ -16,7 +16,7 @@ spec:
     - metadata:
         name: kafkarest
       spec:
-        accessModes: [ "ReadWriteOnce" ]
+        accessModes: [ "ReadWriteMany" ]
         #storageClassName: manual
         resources:
           requests:

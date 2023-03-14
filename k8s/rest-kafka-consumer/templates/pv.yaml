@@ -1,7 +1,7 @@
 kind: PersistentVolume
 apiVersion: v1
 metadata:
-  name: kafkarest-pv
+  name: {{ include "rest-kafka-consumer.fullname" . }}-pv
 spec:
   accessModes:
     - ReadWriteOnce
