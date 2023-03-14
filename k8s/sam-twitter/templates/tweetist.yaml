@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: twitter-account
+  name: {{ include "sam-twitter.fullname" . }}-secrets
 type: Opaque
 data:
   consumer-key: QnZsdlQzcUdRaFNRak0ydjJHSGdqc1pQRQ==

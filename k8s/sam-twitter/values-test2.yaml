@@ -82,12 +82,11 @@ tolerations: []
 affinity: {}
 samConfig:
   serving_port: 8872
-  nodePort: 31072
+  nodePort: 31073
   kafka_broker: bus-kafka-0.bus-kafka-brokers.kafka.svc.cluster.local:9092
   #kafka_broker: 127.0.0.1:9092
-  kafka_topic: test1
+  kafka_topic: test2
   hashtags:
-    - elonmask
-    - bitcoin
-    - nft
-    - psle
+    - ftx
+    - svb
+    - sbf
