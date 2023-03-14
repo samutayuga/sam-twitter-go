@@ -39,7 +39,7 @@ securityContext: {}
   # runAsUser: 1000
 
 service:
-  type: ClusterIP
+  type: NodePort
   port: 8873
 
 ingress:
@@ -92,7 +92,7 @@ samConfig:
   nodePort: 30073
   kafka_broker: bus-kafka-0.bus-kafka-brokers.kafka.svc.cluster.local:9092
   #kafka_broker: 127.0.0.1:9092
-  kafka_topic: public.openatms.systemtrack
+  kafka_topic: test1
   hashtags:
     - elonmask
     - bitcoin
