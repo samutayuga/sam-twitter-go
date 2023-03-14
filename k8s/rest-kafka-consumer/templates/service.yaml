@@ -10,6 +10,9 @@ spec:
     - port: {{ .Values.samConfig.serving_port }}
       targetPort: http
       protocol: TCP
+      {{ if eq .Values.service.type "NodePort" -}}
+      nodePort: {{ .Values.samConfig.nodePort }}
+      {{- end }}
       name: http
   selector:
     {{- include "rest-kafka-consumer.selectorLabels" . | nindent 4 }}
