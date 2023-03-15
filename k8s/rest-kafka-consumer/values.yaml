@@ -40,7 +40,7 @@ securityContext: {}
 
 service:
   type: NodePort
-  port: 8873
+  port: 8872
 
 ingress:
   ingressClassName: kong
@@ -88,8 +88,8 @@ tolerations: []
 nodeSelector: {}
 affinity: {}
 samConfig:
-  serving_port: 8873
-  nodePort: 30073
+  serving_port: 8872
+  nodePort: 30072
   kafka_broker: bus-kafka-0.bus-kafka-brokers.kafka.svc.cluster.local:9092
   #kafka_broker: 127.0.0.1:9092
   kafka_topic: test1
