@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 import "github.com/dghubble/oauth1"
 
@@ -87,4 +88,23 @@ func DoStream() {
 		fmt.Println("Stopping Stream")
 		stream.Stop()
 	}
+}
+
+func DoRandomData() {
+	ticker := time.NewTicker(2 * time.Second)
+	done := make(chan bool)
+
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case t := <-ticker.C:
+				kafkist.Produce(TopicName, fmt.Sprintf("Sent at %v in topic %v", t, TopicName))
+				go kafkist.HandleReport()
+
+			}
+
+		}
+	}()
 }

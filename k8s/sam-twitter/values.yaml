@@ -8,7 +8,7 @@ image:
   repository: samutup/kafka-producer
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "1.0.0"
+  tag: "1.0.2"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -75,9 +75,14 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
-nodeSelector: {}
+nodeSelector:
+  type: app
 
-tolerations: []
+tolerations:
+  - key: "NodeType"
+    operator: "Equal"
+    value: "app"
+    effect: "NoSchedule"
 
 affinity: {}
 samConfig:
@@ -87,7 +92,4 @@ samConfig:
   #kafka_broker: 127.0.0.1:9092
   kafka_topic: test1
   hashtags:
-    - elonmask
-    - bitcoin
-    - nft
-    - psle
+    - jokowi

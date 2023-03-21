@@ -8,7 +8,7 @@ image:
   repository: samutup/kafka-producer
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "1.0.0"
+  tag: "1.0.2"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -38,7 +38,7 @@ securityContext: {}
 
 service:
   type: NodePort
-  port: 80
+  port: 8873
 
 ingress:
   enabled: false
@@ -75,13 +75,18 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
-nodeSelector: {}
+nodeSelector:
+  type: app
 
-tolerations: []
+tolerations:
+  - key: "NodeType"
+    operator: "Equal"
+    value: "app"
+    effect: "NoSchedule"
 
 affinity: {}
 samConfig:
-  serving_port: 8872
+  serving_port: 8873
   nodePort: 31073
   kafka_broker: bus-kafka-0.bus-kafka-brokers.kafka.svc.cluster.local:9092
   #kafka_broker: 127.0.0.1:9092

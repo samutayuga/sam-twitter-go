@@ -56,7 +56,7 @@ func main() {
 		}
 	}()
 	//kafkist.CreateProducer()
-	go tweetist.DoStream()
+	tweetist.DoStream()
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)
