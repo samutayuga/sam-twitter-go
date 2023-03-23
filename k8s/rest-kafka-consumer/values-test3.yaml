@@ -14,7 +14,7 @@ imagePullSecrets:
   - name: registry
   - name: atwin-secrets
 nameOverride: ""
-fullnameOverride: ""
+fullnameOverride: "test3-consumer"
 
 serviceAccount:
   # Specifies whether a service account should be created

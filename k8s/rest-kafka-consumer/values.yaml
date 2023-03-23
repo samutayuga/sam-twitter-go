@@ -14,7 +14,7 @@ imagePullSecrets:
   - name: registry
   - name: atwin-secrets
 nameOverride: ""
-fullnameOverride: ""
+fullnameOverride: "test1-consumer"
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -80,10 +80,15 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
-#nodeSelector: {}
+nodeSelector: 
+  type: app
 
 #tolerations: []
-tolerations: []
+tolerations:
+- key: "NodeType" 
+  operator: "Equal"
+  value: "app"
+  effect: "NoSchedule"
 
 nodeSelector: {}
 affinity: {}

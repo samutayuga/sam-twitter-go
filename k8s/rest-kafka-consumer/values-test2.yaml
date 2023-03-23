@@ -14,7 +14,7 @@ imagePullSecrets:
   - name: registry
   - name: atwin-secrets
 nameOverride: ""
-fullnameOverride: ""
+fullnameOverride: "test2-consumer"
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -83,9 +83,14 @@ autoscaling:
 #nodeSelector: {}
 
 #tolerations: []
-tolerations: []
+tolerations:
+- key: "NodeType"
+  operator: "Equal"
+  value: "app"
+  effect: "NoSchedule"
 
-nodeSelector: {}
+nodeSelector:
+  type: app 
 affinity: {}
 samConfig:
   serving_port: 8873
