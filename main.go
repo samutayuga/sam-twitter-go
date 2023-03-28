@@ -2,15 +2,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/samutayuga/sam-twitter-go/kafkist"
-	"github.com/samutayuga/sam-twitter-go/tweetist"
-	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+
+	"github.com/gorilla/mux"
+	"github.com/samutayuga/sam-twitter-go/kafkist"
+	"github.com/samutayuga/sam-twitter-go/tweetist"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -56,7 +57,7 @@ func main() {
 		}
 	}()
 	//kafkist.CreateProducer()
-	tweetist.DoStream()
+	tweetist.DoRandomData()
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)

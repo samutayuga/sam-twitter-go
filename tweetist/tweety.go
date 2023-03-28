@@ -3,17 +3,18 @@ package tweetist
 import (
 	"flag"
 	"fmt"
-	"github.com/coreos/pkg/flagutil"
-	"github.com/dghubble/go-twitter/twitter"
-	"github.com/samutayuga/sam-twitter-go/kafkist"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/coreos/pkg/flagutil"
+	"github.com/dghubble/go-twitter/twitter"
+	"github.com/dghubble/oauth1"
+	"github.com/samutayuga/sam-twitter-go/kafkist"
 )
-import "github.com/dghubble/oauth1"
 
 type Daterange struct {
 	TimestampStart string `json:"timestamp_start"`
@@ -91,7 +92,7 @@ func DoStream() {
 }
 
 func DoRandomData() {
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(4 * time.Second)
 	done := make(chan bool)
 
 	go func() {
