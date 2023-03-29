@@ -315,4 +315,7 @@ a message is posted at a consistent manner.
 The underlying implementation is `queue` based on `doubly linked list` data structure.
 This is to make sure the O(1) constant running time complexity when enqueue and dequeue.
 
-
+## Create temporary pod
+```shell
+k run http-client --image=nginx:alpine --overrides '{"spec":{"tolerations":[{"key": "NodeType","operator": "Equal","value": "app","effect": "NoSchedule"}],"nodeSelector": {"type": "app"} } }'  --rm --force --grace-period 0 -it -- /bin/sh -c "curl test1-consumer.monitoring.svc.cluster.local:8872/topic/start -X POST -H 'Content-Type: application/json' -d '{\"topic_name\": \"test1\",\"broker\": \"bus-kafka-0.bus-kafka-brokers.kafka.svc.cluster.local:9092\",\"offset_start\": \"earliest\",\"group\": \"kyla\"}' "
+```
