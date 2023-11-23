@@ -15,4 +15,5 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/dghubble/sling v1.4.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/stretchr/testify v1.8.0 // indirect
 )
